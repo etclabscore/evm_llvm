@@ -66,6 +66,9 @@ namespace llvm {
   public:
     using SymbolTable = StringMap<MCSymbol *, BumpPtrAllocator &>;
 
+    /// The ConstantIntsPool reference getter
+    std::vector<ConstantInt *> &getConstantPool() { return ConstantIntsVector; }
+
   private:
     /// The SourceMgr for this object, if any.
     const SourceMgr *SrcMgr;
@@ -149,6 +152,9 @@ namespace llvm {
     /// The main file name if passed in explicitly.
     std::string MainFileName;
 
+    /// ConstantInt pool for EVM backend
+    std::vector<ConstantInt *> ConstantIntsVector;
+
     /// The dwarf file and directory tables from the dwarf .file directive.
     /// We now emit a line table for each compile unit. To reduce the prologue
     /// size of each line table, the files and directories used by each compile
@@ -161,6 +167,9 @@ namespace llvm {
 
     /// Generate dwarf debugging info for assembly source files.
     bool GenDwarfForAssembly = false;
+
+    /// Generate EVM binary metadata information.
+    bool GenEVMMetadataForAssembly = false;
 
     /// The current dwarf file number when generate dwarf debugging info for
     /// assembly source files.
@@ -618,6 +627,9 @@ namespace llvm {
     bool getGenDwarfForAssembly() { return GenDwarfForAssembly; }
     void setGenDwarfForAssembly(bool Value) { GenDwarfForAssembly = Value; }
     unsigned getGenDwarfFileNumber() { return GenDwarfFileNumber; }
+
+    bool getGenEVMMetadataForAssembly() { return GenEVMMetadataForAssembly; }
+    void setGenEVMMetaDataForAssembly(bool Value) { GenEVMMetadataForAssembly = Value; }
 
     void setGenDwarfFileNumber(unsigned FileNumber) {
       GenDwarfFileNumber = FileNumber;

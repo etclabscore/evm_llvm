@@ -27,6 +27,7 @@
 #include "llvm/MC/MCSectionMachO.h"
 #include "llvm/MC/MCSectionWasm.h"
 #include "llvm/MC/MCSectionXCOFF.h"
+#include "llvm/MC/MCSectionEVM.h"
 #include "llvm/MC/MCStreamer.h"
 #include "llvm/MC/MCSymbol.h"
 #include "llvm/MC/MCSymbolCOFF.h"
@@ -120,6 +121,13 @@ void MCContext::reset() {
   GenDwarfFileNumber = 0;
 
   HadError = false;
+
+  // clear ConstantIntsPool
+  while (!ConstantIntsVector.empty()) {
+    ConstantInt * ci = ConstantIntsVector.back();
+    ConstantIntsVector.pop_back();
+    delete ci;
+  }
 }
 
 //===----------------------------------------------------------------------===//
@@ -169,6 +177,8 @@ MCSymbol *MCContext::createSymbolImpl(const StringMapEntry<bool> *Name,
       return new (Name, *this) MCSymbolWasm(Name, IsTemporary);
     case MCObjectFileInfo::IsXCOFF:
       return new (Name, *this) MCSymbolXCOFF(Name, IsTemporary);
+    case MCObjectFileInfo::IsEVM:
+      return new (Name, *this) MCSymbolEVM(Name, IsTemporary);
     }
   }
   return new (Name, *this) MCSymbol(MCSymbol::SymbolKindUnset, Name,
