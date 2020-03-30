@@ -865,6 +865,8 @@ void MCAssembler::Finish() {
   MCAsmLayout Layout(*this);
   layout(Layout);
 
+  getBackend().finish(*this, Layout);
+
   // Write the object file.
   stats::ObjectBytes += getWriter().writeObject(*this, Layout);
 }

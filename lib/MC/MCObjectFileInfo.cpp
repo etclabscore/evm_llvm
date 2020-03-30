@@ -298,6 +298,10 @@ void MCObjectFileInfo::initMachOMCObjectFileInfo(const Triple &T) {
   TLSExtraDataSection = TLSTLVSection;
 }
 
+void MCObjectFileInfo::initEVMMCObjectFileInfo(const Triple &T) {
+    // TODO: implement the details.
+}
+
 void MCObjectFileInfo::initELFMCObjectFileInfo(const Triple &T, bool Large) {
   switch (T.getArch()) {
   case Triple::mips:
@@ -819,6 +823,10 @@ void MCObjectFileInfo::InitMCObjectFileInfo(const Triple &TheTriple, bool PIC,
     Env = IsELF;
     initELFMCObjectFileInfo(TT, LargeCodeModel);
     break;
+  case Triple::EVMBinary:
+    Env = IsEVM;
+    initEVMMCObjectFileInfo(TT);
+    break;
   case Triple::Wasm:
     Env = IsWasm;
     initWasmMCObjectFileInfo(TT);
@@ -843,6 +851,7 @@ MCSection *MCObjectFileInfo::getDwarfComdatSection(const char *Name,
   case Triple::COFF:
   case Triple::Wasm:
   case Triple::XCOFF:
+  case Triple::EVMBinary:
   case Triple::UnknownObjectFormat:
     report_fatal_error("Cannot get DWARF comdat section for this object file "
                        "format: not implemented.");
