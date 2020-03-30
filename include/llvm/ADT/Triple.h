@@ -54,6 +54,7 @@ public:
     avr,            // AVR: Atmel AVR microcontroller
     bpfel,          // eBPF or extended BPF or 64-bit BPF (little endian)
     bpfeb,          // eBPF or extended BPF or 64-bit BPF (big endian)
+    evm,            // EVM: Ethereum Virtual Machine
     hexagon,        // Hexagon: hexagon
     mips,           // MIPS: mips, mipsallegrex, mipsr6
     mipsel,         // MIPSEL: mipsel, mipsallegrexe, mipsr6el
@@ -189,7 +190,8 @@ public:
     Hurd,       // GNU/Hurd
     WASI,       // Experimental WebAssembly OS
     Emscripten,
-    LastOSType = Emscripten
+    EVM,        // Ethereum Virtual Machine
+    LastOSType = EVM
   };
   enum EnvironmentType {
     UnknownEnvironment,
@@ -226,6 +228,7 @@ public:
     MachO,
     Wasm,
     XCOFF,
+    EVMBinary,
   };
 
 private:
@@ -607,6 +610,10 @@ public:
     return getOS() == Triple::Emscripten;
   }
 
+  bool isOSEVM() const {
+    return getOS() == Triple::EVM;
+  }
+
   /// Tests whether the OS uses glibc.
   bool isOSGlibc() const {
     return (getOS() == Triple::Linux || getOS() == Triple::KFreeBSD ||
@@ -642,6 +649,10 @@ public:
   /// Tests whether the OS uses the XCOFF binary format.
   bool isOSBinFormatXCOFF() const {
     return getObjectFormat() == Triple::XCOFF;
+  }
+
+  bool isOSBinFormatEVM() const {
+    return getObjectFormat() == Triple::EVMBinary;
   }
 
   /// Tests whether the target is the PS4 CPU

@@ -39,9 +39,14 @@ class LLVMContext;
 /// Integer representation type
 class IntegerType : public Type {
   friend class LLVMContextImpl;
+  friend class MCContext;
 
 protected:
   explicit IntegerType(LLVMContext &C, unsigned NumBits) : Type(C, IntegerTyID){
+    setSubclassData(NumBits);
+  }
+
+  explicit IntegerType(MCContext &C, unsigned NumBits) : Type(C, IntegerTyID){
     setSubclassData(NumBits);
   }
 
@@ -61,6 +66,11 @@ public:
   /// one instance with a given NumBits value is ever created.
   /// Get or create an IntegerType instance.
   static IntegerType *get(LLVMContext &C, unsigned NumBits);
+
+  /// This is an hacked version to create an IntegerType outside LLVMContext
+  /// but inside MCContext. This should use the MCContext's own allocator for 
+  /// memory references.
+  static IntegerType *get(MCContext &C, unsigned NumBits);
 
   /// Get the number of bits in this IntegerType
   unsigned getBitWidth() const { return getSubclassData(); }
