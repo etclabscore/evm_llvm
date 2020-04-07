@@ -32,7 +32,7 @@ def FeatureSubroutine : SubtargetFeature<"subroutine",
                                          "EVM Subroutine support">;
 
 def HasSubroutine : Predicate<"Subtarget->hasSubroutine()">,
-                              AssemblerPredicate<"FeatureSubroutine">;
+                    AssemblerPredicate<"FeatureSubroutine">;
 
 class Proc<string Name, list<SubtargetFeature> Features>
  : Processor<Name, NoItineraries, Features>;
