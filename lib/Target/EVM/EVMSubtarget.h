@@ -31,13 +31,9 @@ class StringRef;
 class EVMSubtarget : public EVMGenSubtargetInfo {
   virtual void anchor();
 
-  // EVM Change
-  bool HasEIP211 = false;
-  bool HasEIP615 = false;
+  bool HasSubroutine = true;
 
-  bool hasEIP211() const { return HasEIP211; }
-  bool hasEIP615() const { return HasEIP615; }
-  // end of EVM Change
+  bool hasSubroutine() const {return HasSubroutine; }
 
   EVMFrameLowering FrameLowering;
   EVMInstrInfo InstrInfo;
