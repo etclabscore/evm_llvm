@@ -31,7 +31,7 @@ class StringRef;
 class EVMSubtarget : public EVMGenSubtargetInfo {
   virtual void anchor();
 
-  bool HasSubroutine = true;
+  bool HasSubroutine = false;
 
   EVMFrameLowering FrameLowering;
   EVMInstrInfo InstrInfo;
