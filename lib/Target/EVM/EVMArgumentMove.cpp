@@ -140,9 +140,9 @@ void EVMArgumentMove::arrangeStackArgs(MachineFunction& MF) const {
   for (MachineBasicBlock &MBB : MF) {
     for (MachineBasicBlock::iterator I = MBB.begin(), E = MBB.end(); I != E;) {
       MachineInstr &MI = *I++;
-      if (MI.getOpcode() == EVM::pRETURNSUB_TEMP_r) {
+      if (MI.getOpcode() == EVM::pRETURNSUB_r) {
         auto mibuilder = BuildMI(*MI.getParent(), MI, MI.getDebugLoc(),
-                TII->get(EVM::pRETURNSUB_r));
+                TII->get(EVM::pRETURNSUBTO_r));
 
         // TODO: this might change
         if (!EVMSubtarget::isMainFunction(F)) {
@@ -152,9 +152,9 @@ void EVMArgumentMove::arrangeStackArgs(MachineFunction& MF) const {
         mibuilder.addReg(MI.getOperand(0).getReg());
         MI.eraseFromParent();
       }
-      if (MI.getOpcode() == EVM::pRETURNSUBVOID_TEMP_r) {
+      if (MI.getOpcode() == EVM::pRETURNSUBVOID_r) {
         auto mibuilder = BuildMI(*MI.getParent(), MI, MI.getDebugLoc(),
-                TII->get(EVM::pRETURNSUBVOID_r));
+                TII->get(EVM::pRETURNSUBVOIDTO_r));
 
         if (!EVMSubtarget::isMainFunction(F)) {
             mibuilder.addReg(returnAddrReg);
