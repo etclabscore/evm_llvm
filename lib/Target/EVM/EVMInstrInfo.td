@@ -558,8 +558,6 @@ let isTerminator = 1, isBarrier = 1, isBranch = 1 in {
                 [(EVMRetflag i256:$src)]>;
     def pRETURNSUBVOID_TEMP_r :
       EVMPseudo<(outs), (ins), [(EVMRetflag)]>;
-    def pRETURNSUB:
-      EVMPseudo<(outs), (ins), []>;
 
     // the version with return address embedded
     def pRETURNSUB_r  :
