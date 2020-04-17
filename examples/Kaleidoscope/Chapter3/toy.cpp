@@ -492,25 +492,42 @@ Function *GenerateWrapperFunction() {
   Function *F =
       Function::Create(FT, Function::ExternalLinkage, "main", TheModule.get());
 
-  // Generate instructions to extract values from the blockchain.
-  CallInst* mstore = CreateMSTORE(64, 128);
+  BasicBlock *BB = BasicBlock::Create(TheContext, "entry", F);
+  Builder.SetInsertPoint(BB);
 
-  assert(TheModule->size() == 1);
-  Function* func = nullptr;//TheModule.begin();
-  const FunctionType* funcTy = func->getFunctionType();
-
-  // extract parameters;
-  std::vector<CallInst*> extractedParams;
-  for (size_t i = 0; i < funcTy->getNumParams(); ++i) {
-    CallInst* calldataload = CreateCALLDATALOAD(i * 32);
-    extractedParams.push_back(calldataload);
+  // set up stack frame pointer
+  {
+    Value* addr_int = Get128ConstantInt(64);
+    Value* val_int  = Get128ConstantInt(128);
+    Builder.CreateIntrinsic(Intrinsic::readcyclecounter, {}, {addr_int, val_int});
   }
 
-  // call the def function
+  // extract parameters: need callee function info
+  assert(TheModule->size() == 1);
+  Function* calleeF = nullptr;//TheModule.begin();
+  const FunctionType* calleeTy =calleeF->getFunctionType();
 
-  //CallInst* mstore0_2 = CreateMSTORE(0, vvv);
+  std::vector<Value*> extractedParams;
+  for (size_t i = 0; i < calleeTy->getNumParams(); ++i) {
+    Value* val_int  = Get128ConstantInt(i * 32);
+    CallInst* calldataload= Builder.CreateIntrinsic(Intrinsic::readcyclecounter, {}, {val_int});
+    extractedParams.push_back(calldataload);
+  }
+  CallInst *call_calleeF = Builder.CreateCall(calleeF, extractedParams);
 
-  CallInst* returnInst = Builder.CreateIntrinsic(Intrinsic::readcyclecounter, {}, {});
+  if (calleeTy->getReturnType()->isVoidTy()) {
+    // TODO
+  } else {
+    // store returned value to memory
+    {
+      Value* addr_int = Get128ConstantInt(0);
+      Builder.CreateIntrinsic(Intrinsic::readcyclecounter, {}, {addr_int, call_calleeF});
+    }
+
+    CallInst* returnInst = Builder.CreateIntrinsic(Intrinsic::readcyclecounter, {}, {});
+  }
+
+  Builder.CreateUnreachable();
 
   verifyFunction(*F);
   return F;
