@@ -178,6 +178,10 @@ public:
       : Proto(std::move(Proto)), Body(std::move(Body)) {}
 
   Function *codegen();
+
+  std::string getFunctionName() {
+    return Proto->getName();
+  }
 };
 
 } // end anonymous namespace
@@ -483,7 +487,7 @@ static CallInst* CreateCALLDATALOAD(int64_t val) {
   return callload;
 }
 
-Function *GenerateWrapperFunction() {
+Function *GenerateWrapperFunction(Function* calleeF) {
   std::vector<Type *> inputs;
 
   FunctionType* FT = FunctionType::get(Type::getVoidTy(TheContext),
@@ -503,8 +507,6 @@ Function *GenerateWrapperFunction() {
   }
 
   // extract parameters: need callee function info
-  assert(TheModule->size() == 1);
-  Function* calleeF = nullptr;//TheModule.begin();
   const FunctionType* calleeTy =calleeF->getFunctionType();
 
   std::vector<Value*> extractedParams;
@@ -593,6 +595,11 @@ static void HandleDefinition() {
     if (auto *FnIR = FnAST->codegen()) {
       fprintf(stderr, "Read function definition:");
       FnIR->print(errs());
+      fprintf(stderr, "\n");
+
+      fprintf(stderr, "Emitting wrapper function:");
+      auto *wrapper = GenerateWrapperFunction(FnIR);
+      wrapper->print(errs());
       fprintf(stderr, "\n");
     }
   } else {
