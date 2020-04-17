@@ -1,4 +1,4 @@
-#include "llvm/ADT/APFloat.h"
+#include "llvm/ADT/APInt.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Constants.h"
@@ -39,7 +39,7 @@ enum Token {
 };
 
 static std::string IdentifierStr; // Filled in if tok_identifier
-static double NumVal;             // Filled in if tok_number
+static int64_t NumVal;             // Filled in if tok_number
 
 /// gettok - Return the next token from standard input.
 static int gettok() {
@@ -68,7 +68,7 @@ static int gettok() {
       LastChar = getchar();
     } while (isdigit(LastChar) || LastChar == '.');
 
-    NumVal = strtod(NumStr.c_str(), nullptr);
+    NumVal = strtol(NumStr.c_str(), nullptr, 10);
     return tok_number;
   }
 
@@ -108,10 +108,10 @@ public:
 
 /// NumberExprAST - Expression class for numeric literals like "1.0".
 class NumberExprAST : public ExprAST {
-  double Val;
+  int64_t Val;
 
 public:
-  NumberExprAST(double Val) : Val(Val) {}
+  NumberExprAST(int64_t Val) : Val(Val) {}
 
   Value *codegen() override;
 };
@@ -410,7 +410,7 @@ Value *LogErrorV(const char *Str) {
 }
 
 Value *NumberExprAST::codegen() {
-  return ConstantFP::get(TheContext, APFloat(Val));
+  return ConstantInt::get(TheContext, APInt(128, Val));
 }
 
 Value *VariableExprAST::codegen() {
@@ -429,15 +429,17 @@ Value *BinaryExprAST::codegen() {
 
   switch (Op) {
   case '+':
-    return Builder.CreateFAdd(L, R, "addtmp");
+    return Builder.CreateAdd(L, R, "addtmp");
   case '-':
-    return Builder.CreateFSub(L, R, "subtmp");
+    return Builder.CreateSub(L, R, "subtmp");
   case '*':
-    return Builder.CreateFMul(L, R, "multmp");
+    return Builder.CreateMul(L, R, "multmp");
   case '<':
-    L = Builder.CreateFCmpULT(L, R, "cmptmp");
+    /*
+    L = Builder.CreateCmpULT(L, R, "cmptmp");
     // Convert bool 0/1 to double 0.0 or 1.0
     return Builder.CreateUIToFP(L, Type::getDoubleTy(TheContext), "booltmp");
+    */
   default:
     return LogErrorV("invalid binary operator");
   }
@@ -464,10 +466,10 @@ Value *CallExprAST::codegen() {
 }
 
 Function *PrototypeAST::codegen() {
-  // Make the function type:  double(double,double) etc.
-  std::vector<Type *> Doubles(Args.size(), Type::getDoubleTy(TheContext));
+  // Make the function type: int(int,int) etc.
+  std::vector<Type *> Int128(Args.size(), Type::getInt128Ty(TheContext));
   FunctionType *FT =
-      FunctionType::get(Type::getDoubleTy(TheContext), Doubles, false);
+      FunctionType::get(Type::getInt128Ty(TheContext), Int128, false);
 
   Function *F =
       Function::Create(FT, Function::ExternalLinkage, Name, TheModule.get());
