@@ -404,6 +404,10 @@ static IRBuilder<> Builder(TheContext);
 static std::unique_ptr<Module> TheModule;
 static std::map<std::string, Value *> NamedValues;
 
+static Value* Get128ConstantInt(int64_t val) {
+  return ConstantInt::get(TheContext, APInt(128, val));
+}
+
 Value *LogErrorV(const char *Str) {
   LogError(Str);
   return nullptr;
@@ -463,6 +467,53 @@ Value *CallExprAST::codegen() {
   }
 
   return Builder.CreateCall(CalleeF, ArgsV, "calltmp");
+}
+
+static CallInst* CreateMSTORE(int64_t addr, int64_t val) {
+  Value* addr_int = Get128ConstantInt(addr);
+  Value* val_int  = Get128ConstantInt(val);
+
+  CallInst* mload = Builder.CreateIntrinsic(Intrinsic::readcyclecounter, {}, {addr_int, val_int});
+  return mload;
+}
+
+static CallInst* CreateCALLDATALOAD(int64_t val) {
+  Value* val_int  = Get128ConstantInt(val);
+  CallInst* callload= Builder.CreateIntrinsic(Intrinsic::readcyclecounter, {}, {val_int});
+  return callload;
+}
+
+Function *GenerateWrapperFunction() {
+  std::vector<Type *> inputs;
+
+  FunctionType* FT = FunctionType::get(Type::getVoidTy(TheContext),
+                                       inputs, false);
+
+  Function *F =
+      Function::Create(FT, Function::ExternalLinkage, "main", TheModule.get());
+
+  // Generate instructions to extract values from the blockchain.
+  CallInst* mstore = CreateMSTORE(64, 128);
+
+  assert(TheModule->size() == 1);
+  Function* func = nullptr;//TheModule.begin();
+  const FunctionType* funcTy = func->getFunctionType();
+
+  // extract parameters;
+  std::vector<CallInst*> extractedParams;
+  for (size_t i = 0; i < funcTy->getNumParams(); ++i) {
+    CallInst* calldataload = CreateCALLDATALOAD(i * 32);
+    extractedParams.push_back(calldataload);
+  }
+
+  // call the def function
+
+  //CallInst* mstore0_2 = CreateMSTORE(0, vvv);
+
+  CallInst* returnInst = Builder.CreateIntrinsic(Intrinsic::readcyclecounter, {}, {});
+
+  verifyFunction(*F);
+  return F;
 }
 
 Function *PrototypeAST::codegen() {
@@ -600,7 +651,7 @@ int main() {
   getNextToken();
 
   // Make the module, which holds all the code.
-  TheModule = std::make_unique<Module>("my cool jit", TheContext);
+  TheModule = std::make_unique<Module>("My cool EVM function", TheContext);
 
   // Run the main "interpreter loop" now.
   MainLoop();
