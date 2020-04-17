@@ -408,8 +408,8 @@ static IRBuilder<> Builder(TheContext);
 static std::unique_ptr<Module> TheModule;
 static std::map<std::string, Value *> NamedValues;
 
-static Value* Get128ConstantInt(int64_t val) {
-  return ConstantInt::get(TheContext, APInt(128, val));
+static Value* Get256ConstantInt(int64_t val) {
+  return ConstantInt::get(TheContext, APInt(256, val));
 }
 
 Value *LogErrorV(const char *Str) {
@@ -418,7 +418,7 @@ Value *LogErrorV(const char *Str) {
 }
 
 Value *NumberExprAST::codegen() {
-  return ConstantInt::get(TheContext, APInt(128, Val));
+  return ConstantInt::get(TheContext, APInt(256, Val));
 }
 
 Value *VariableExprAST::codegen() {
@@ -474,15 +474,15 @@ Value *CallExprAST::codegen() {
 }
 
 static CallInst* CreateMSTORE(int64_t addr, int64_t val) {
-  Value* addr_int = Get128ConstantInt(addr);
-  Value* val_int  = Get128ConstantInt(val);
+  Value* addr_int = Get256ConstantInt(addr);
+  Value* val_int  = Get256ConstantInt(val);
 
   CallInst* mload = Builder.CreateIntrinsic(Intrinsic::readcyclecounter, {}, {addr_int, val_int});
   return mload;
 }
 
 static CallInst* CreateCALLDATALOAD(int64_t val) {
-  Value* val_int  = Get128ConstantInt(val);
+  Value* val_int  = Get256ConstantInt(val);
   CallInst* callload= Builder.CreateIntrinsic(Intrinsic::readcyclecounter, {}, {val_int});
   return callload;
 }
@@ -499,6 +499,7 @@ Function *GenerateWrapperFunction(Function* calleeF) {
   BasicBlock *BB = BasicBlock::Create(TheContext, "entry", F);
   Builder.SetInsertPoint(BB);
 
+  /*
   // set up stack frame pointer
   {
     Value* addr_int = Get128ConstantInt(64);
@@ -528,6 +529,7 @@ Function *GenerateWrapperFunction(Function* calleeF) {
 
     CallInst* returnInst = Builder.CreateIntrinsic(Intrinsic::readcyclecounter, {}, {});
   }
+  */
 
   Builder.CreateUnreachable();
 
@@ -537,9 +539,9 @@ Function *GenerateWrapperFunction(Function* calleeF) {
 
 Function *PrototypeAST::codegen() {
   // Make the function type: int(int,int) etc.
-  std::vector<Type *> Int128(Args.size(), Type::getInt128Ty(TheContext));
+  std::vector<Type *> Int256(Args.size(), Type::getInt256Ty(TheContext));
   FunctionType *FT =
-      FunctionType::get(Type::getInt128Ty(TheContext), Int128, false);
+      FunctionType::get(Type::getInt256Ty(TheContext), Int256, false);
 
   Function *F =
       Function::Create(FT, Function::ExternalLinkage, Name, TheModule.get());
