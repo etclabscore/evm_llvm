@@ -9,6 +9,9 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Type.h"
 #include "llvm/IR/Verifier.h"
+
+#include "llvm/IR/IntrinsicsEVM.h"
+
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
@@ -473,20 +476,6 @@ Value *CallExprAST::codegen() {
   return Builder.CreateCall(CalleeF, ArgsV, "calltmp");
 }
 
-static CallInst* CreateMSTORE(int64_t addr, int64_t val) {
-  Value* addr_int = Get256ConstantInt(addr);
-  Value* val_int  = Get256ConstantInt(val);
-
-  CallInst* mload = Builder.CreateIntrinsic(Intrinsic::readcyclecounter, {}, {addr_int, val_int});
-  return mload;
-}
-
-static CallInst* CreateCALLDATALOAD(int64_t val) {
-  Value* val_int  = Get256ConstantInt(val);
-  CallInst* callload= Builder.CreateIntrinsic(Intrinsic::readcyclecounter, {}, {val_int});
-  return callload;
-}
-
 Function *GenerateWrapperFunction(Function* calleeF) {
   std::vector<Type *> inputs;
 
@@ -499,12 +488,14 @@ Function *GenerateWrapperFunction(Function* calleeF) {
   BasicBlock *BB = BasicBlock::Create(TheContext, "entry", F);
   Builder.SetInsertPoint(BB);
 
-  /*
   // set up stack frame pointer
   {
-    Value* addr_int = Get128ConstantInt(64);
-    Value* val_int  = Get128ConstantInt(128);
-    Builder.CreateIntrinsic(Intrinsic::readcyclecounter, {}, {addr_int, val_int});
+    Value* addr = Get256ConstantInt(64);
+    Value* val  = Get256ConstantInt(128);
+    Builder.CreateIntrinsic(Intrinsic::evm_mstore,
+                            {Type::getInt256Ty(TheContext),
+                             Type::getInt256Ty(TheContext)},
+                            {addr, val});
   }
 
   // extract parameters: need callee function info
@@ -512,8 +503,10 @@ Function *GenerateWrapperFunction(Function* calleeF) {
 
   std::vector<Value*> extractedParams;
   for (size_t i = 0; i < calleeTy->getNumParams(); ++i) {
-    Value* val_int  = Get128ConstantInt(i * 32);
-    CallInst* calldataload= Builder.CreateIntrinsic(Intrinsic::readcyclecounter, {}, {val_int});
+    Value* val_int  = Get256ConstantInt(i * 32);
+    CallInst* calldataload= Builder.CreateIntrinsic(Intrinsic::evm_calldataload,
+                                                    {Type::getInt256Ty(TheContext)},
+                                                    {val_int});
     extractedParams.push_back(calldataload);
   }
   CallInst *call_calleeF = Builder.CreateCall(calleeF, extractedParams);
@@ -523,13 +516,15 @@ Function *GenerateWrapperFunction(Function* calleeF) {
   } else {
     // store returned value to memory
     {
-      Value* addr_int = Get128ConstantInt(0);
-      Builder.CreateIntrinsic(Intrinsic::readcyclecounter, {}, {addr_int, call_calleeF});
+      Value* addr_int = Get256ConstantInt(0);
+      Builder.CreateIntrinsic(Intrinsic::evm_mstore,
+                              {Type::getInt256Ty(TheContext), Type::getInt256Ty(TheContext)},
+                              {addr_int, call_calleeF});
     }
-
-    CallInst* returnInst = Builder.CreateIntrinsic(Intrinsic::readcyclecounter, {}, {});
+    Builder.CreateIntrinsic(Intrinsic::evm_return,
+                            {Type::getInt256Ty(TheContext), Type::getInt256Ty(TheContext)},
+                            {Get256ConstantInt(0), Get256ConstantInt(32)});
   }
-  */
 
   Builder.CreateUnreachable();
 
