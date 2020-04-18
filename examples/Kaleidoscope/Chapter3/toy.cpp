@@ -11,6 +11,7 @@
 #include "llvm/IR/Verifier.h"
 
 #include "llvm/IR/IntrinsicsEVM.h"
+#include "llvm/IR/SymbolTableListTraits.h"
 
 #include <algorithm>
 #include <cctype>
@@ -590,13 +591,21 @@ Function *FunctionAST::codegen() {
 static void HandleDefinition() {
   if (auto FnAST = ParseDefinition()) {
     if (auto *FnIR = FnAST->codegen()) {
-      fprintf(stderr, "Read function definition:");
-      FnIR->print(errs());
-      fprintf(stderr, "\n");
-
-      fprintf(stderr, "Emitting wrapper function:");
       auto *wrapper = GenerateWrapperFunction(FnIR);
-      wrapper->print(errs());
+
+      // move wrapper function to top.
+      using FunctionListType = SymbolTableList<Function>;
+      FunctionListType &FuncList = TheModule->getFunctionList();
+      FuncList.remove(wrapper);
+      FuncList.insert(FuncList.begin(), wrapper);
+
+      StringRef name = Intrinsic::getName(Intrinsic::evm_mstore);
+      fprintf(stderr, "%s\n", name.data());
+
+      fprintf(stderr, "%d\n", Intrinsic::isOverloaded(Intrinsic::evm_mstore));
+
+      fprintf(stderr, "Emitting Smart contract IR:\n\n");
+      TheModule->print(errs(), nullptr);
       fprintf(stderr, "\n");
     }
   } else {
