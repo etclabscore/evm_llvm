@@ -43,7 +43,7 @@ enum Token {
 };
 
 static std::string IdentifierStr; // Filled in if tok_identifier
-static int64_t NumVal;             // Filled in if tok_number
+static std::string NumVal;             // Filled in if tok_number
 
 /// gettok - Return the next token from standard input.
 static int gettok() {
@@ -72,7 +72,7 @@ static int gettok() {
       LastChar = getchar();
     } while (isdigit(LastChar) || LastChar == '.');
 
-    NumVal = strtol(NumStr.c_str(), nullptr, 10);
+    NumVal = NumStr.c_str();
     return tok_number;
   }
 
@@ -112,10 +112,10 @@ public:
 
 /// NumberExprAST - Expression class for numeric literals like "1.0".
 class NumberExprAST : public ExprAST {
-  int64_t Val;
+  std::string Val;
 
 public:
-  NumberExprAST(int64_t Val) : Val(Val) {}
+  NumberExprAST(std::string Val) : Val(Val) {}
 
   Value *codegen() override;
 };
@@ -422,7 +422,7 @@ Value *LogErrorV(const char *Str) {
 }
 
 Value *NumberExprAST::codegen() {
-  return ConstantInt::get(TheContext, APInt(256, Val));
+  return ConstantInt::get(TheContext, APInt(256, Val, 10));
 }
 
 Value *VariableExprAST::codegen() {
