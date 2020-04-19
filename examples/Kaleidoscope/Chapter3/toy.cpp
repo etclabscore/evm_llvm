@@ -493,10 +493,10 @@ Function *GenerateWrapperFunction(Function* calleeF) {
   {
     Value* addr = Get256ConstantInt(64);
     Value* val  = Get256ConstantInt(128);
-    Builder.CreateIntrinsic(Intrinsic::evm_mstore,
-                            {Type::getInt256Ty(TheContext),
-                             Type::getInt256Ty(TheContext)},
-                            {addr, val});
+
+    Function *mstore = Intrinsic::getDeclaration(
+        TheModule.get(), llvm::Intrinsic::evm_mstore, llvm::None);
+    Builder.CreateCall(mstore, {addr, val});
   }
 
   // extract parameters: need callee function info
@@ -516,19 +516,17 @@ Function *GenerateWrapperFunction(Function* calleeF) {
     // TODO
   } else {
     // store returned value to memory
-    {
       Value* addr_int = Get256ConstantInt(0);
-      Builder.CreateIntrinsic(Intrinsic::evm_mstore,
-                              {Type::getInt256Ty(TheContext), Type::getInt256Ty(TheContext)},
-                              {addr_int, call_calleeF});
-    }
-    Builder.CreateIntrinsic(Intrinsic::evm_return,
-                            {Type::getInt256Ty(TheContext), Type::getInt256Ty(TheContext)},
-                            {Get256ConstantInt(0), Get256ConstantInt(32)});
+      Function *mstore = Intrinsic::getDeclaration(
+          TheModule.get(), llvm::Intrinsic::evm_mstore, llvm::None);
+      Builder.CreateCall(mstore, {addr_int, call_calleeF});
+
+      Function *evm_return = Intrinsic::getDeclaration(
+          TheModule.get(), llvm::Intrinsic::evm_return, llvm::None);
+      Builder.CreateCall(evm_return,
+                         {Get256ConstantInt(0), Get256ConstantInt(32)});
   }
-
   Builder.CreateUnreachable();
-
   verifyFunction(*F);
   return F;
 }
