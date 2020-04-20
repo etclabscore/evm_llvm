@@ -505,9 +505,9 @@ Function *GenerateWrapperFunction(Function* calleeF) {
   std::vector<Value*> extractedParams;
   for (size_t i = 0; i < calleeTy->getNumParams(); ++i) {
     Value* val_int  = Get256ConstantInt(i * 32);
-    CallInst* calldataload= Builder.CreateIntrinsic(Intrinsic::evm_calldataload,
-                                                    {Type::getInt256Ty(TheContext)},
-                                                    {val_int});
+    Function *calldataloadF = Intrinsic::getDeclaration(
+        TheModule.get(), llvm::Intrinsic::evm_calldataload, llvm::None);
+    CallInst * calldataload = Builder.CreateCall(calldataloadF, {val_int});
     extractedParams.push_back(calldataload);
   }
   CallInst *call_calleeF = Builder.CreateCall(calleeF, extractedParams);
@@ -598,10 +598,6 @@ static void HandleDefinition() {
       FuncList.insert(FuncList.begin(), wrapper);
 
       StringRef name = Intrinsic::getName(Intrinsic::evm_mstore);
-      fprintf(stderr, "%s\n", name.data());
-
-      fprintf(stderr, "%d\n", Intrinsic::isOverloaded(Intrinsic::evm_mstore));
-
       fprintf(stderr, "Emitting Smart contract IR:\n\n");
       TheModule->print(errs(), nullptr);
       fprintf(stderr, "\n");
