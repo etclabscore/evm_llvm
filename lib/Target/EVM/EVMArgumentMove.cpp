@@ -50,6 +50,9 @@ private:
   void arrangeStackArgs(MachineFunction &MF) const;
   std::vector<unsigned> unusedArgs;
   const EVMInstrInfo *TII;
+  EVMMachineFunctionInfo *MFI;
+  const Function *F;
+  MachineRegisterInfo *MRI;
 };
 } // end anonymous namespace
 
@@ -62,14 +65,10 @@ FunctionPass *llvm::createEVMArgumentMove() {
 }
 
 bool EVMArgumentMove::isStackArg(const MachineInstr &MI) {
-  unsigned opc = MI.getOpcode();
-
-  return (opc == EVM::pSTACKARG_r);
+  return (MI.getOpcode() == EVM::pSTACKARG_r);
 }
 
 void EVMArgumentMove::arrangeStackArgs(MachineFunction& MF) const {
-  EVMMachineFunctionInfo *MFI = MF.getInfo<EVMMachineFunctionInfo>();
-  MachineRegisterInfo &MRI = MF.getRegInfo();
 
   bool hasSubroutine = MF.getSubtarget<EVMSubtarget>().hasSubroutine();
 
@@ -106,7 +105,7 @@ void EVMArgumentMove::arrangeStackArgs(MachineFunction& MF) const {
     if (!stackargs[i]) {
       MachineBasicBlock::iterator insertPt = EntryMBB.begin();
 
-      unsigned destReg = MRI.createVirtualRegister(&EVM::GPRRegClass);
+      unsigned destReg = MRI->createVirtualRegister(&EVM::GPRRegClass);
       BuildMI(EntryMBB, insertPt, insertPt->getDebugLoc(),
               TII->get(EVM::pSTACKARG_r), destReg)
           .addImm(i);
@@ -126,7 +125,7 @@ void EVMArgumentMove::arrangeStackArgs(MachineFunction& MF) const {
   if (!EVMSubtarget::isMainFunction(F)) {
     // return address is the last stackarg:
     unsigned retAddrStackArgNum = MFI->getNumStackArgs();
-    unsigned destReg = MRI.createVirtualRegister(&EVM::GPRRegClass);
+    unsigned destReg = MRI->createVirtualRegister(&EVM::GPRRegClass);
     auto bmi =
         BuildMI(EntryMBB, EntryMBB.front(), EntryMBB.front().getDebugLoc(),
                 TII->get(EVM::pSTACKARG_r), destReg)
@@ -179,8 +178,9 @@ bool EVMArgumentMove::runOnMachineFunction(MachineFunction &MF) {
   unusedArgs.clear();
 
   TII = MF.getSubtarget<EVMSubtarget>().getInstrInfo();
-
-  MachineRegisterInfo &MRI = MF.getRegInfo();
+  MFI = MF.getInfo<EVMMachineFunctionInfo>();
+  F = &MF.getFunction();
+  MRI = &MF.getRegInfo();
 
   bool Changed = false;
   MachineBasicBlock &EntryMBB = MF.front();
@@ -206,7 +206,7 @@ bool EVMArgumentMove::runOnMachineFunction(MachineFunction &MF) {
       unsigned reg = MI.getOperand(0).getReg();
 
       // record unused stack arguments so we can pop it later.
-      bool IsDead = MRI.use_empty(reg);
+      bool IsDead = MRI->use_empty(reg);
       if (IsDead) {
         LLVM_DEBUG({
           dbgs() << "Stack argument: " << Register::virtReg2Index(reg)
