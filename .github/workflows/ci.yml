@@ -1,0 +1,30 @@
+name: C/C++ CI
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        ref: EVM
+    - name: Build
+      run: |
+        mkdir build && cd build
+        cmake -DLLVM_TARGETS_TO_BUILD=EVM -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=EVM ..
+        make -j8
+        cd -
+    - name: Archive
+      run: |
+        zip -j evm-llvm-llc-$GITHUB_SHA.zip build/bin/llc
+        shasum -a 256 evm-llvm-llc-$GITHUB_SHA.zip > evm-llvm-llc-$GITHUB_SHA.zip.sha256
+    - name: Upload 
+      uses: actions/upload-artifact@v2
+      with:
+        name: llc-archive
+        path: evm-llvm-llc-*zip*
