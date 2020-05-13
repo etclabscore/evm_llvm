@@ -17,8 +17,9 @@ jobs:
       run: |
         mkdir build && cd build
         cmake -DLLVM_TARGETS_TO_BUILD=EVM -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=EVM ..
-        echo ">>> make -j$(nproc)"
-        make -j$(nproc)
+        echo "nproc: $(nproc)"
+        echo ">>> make -j6"
+        make -j6
         cd -
     - name: Archive
       run: |
