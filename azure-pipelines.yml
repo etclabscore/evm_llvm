@@ -17,9 +17,7 @@ steps:
 - script: |
     mkdir build && cd build
     cmake -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD=EVM -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=EVM ..
-    echo nproc: $(nproc)
-    echo ">>> make -j8"
-    make -j8
+    make -j$(nproc)
     cd ..
   displayName: 'Build artifacts'
 - task: ArchiveFiles@2
