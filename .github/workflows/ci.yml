@@ -23,6 +23,7 @@ jobs:
       run: |
         zip -j evm-llvm-llc-$GITHUB_SHA.zip build/bin/llc
         shasum -a 256 evm-llvm-llc-$GITHUB_SHA.zip > evm-llvm-llc-$GITHUB_SHA.zip.sha256
+        cat evm-llvm-llc-$GITHUB_SHA.zip.sha256
     - name: Upload 
       uses: actions/upload-artifact@v2
       with:
