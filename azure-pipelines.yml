@@ -16,7 +16,7 @@ steps:
   fetchDepth: 1
 - script: |
     mkdir build && cd build
-    cmake -DLLVM_TARGETS_TO_BUILD=EVM -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=EVM ..
+    cmake -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD=EVM -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=EVM ..
     echo nproc: $(nproc)
     echo ">>> make -j8"
     make -j8
