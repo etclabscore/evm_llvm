@@ -1,0 +1,31 @@
+# C/C++ with GCC
+# Build your C/C++ project with GCC using make.
+# Add steps that publish test results, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/apps/c-cpp/gcc
+
+trigger:
+- master
+- EVM
+- refs/tags/*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+- script: |
+    mkdir build && cd build
+    cmake -DLLVM_TARGETS_TO_BUILD=EVM -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=EVM ..
+    echo nproc: $(nproc)
+    echo ">>> make -j8"
+    make -j8
+    cd ..
+  displayName: 'Build artifacts'
+- task: ArchiveFiles@2
+  inputs:
+   rootFolderOrFile: 'build/bin/llc'
+   includeRootFolder: false
+   archiveType: 'zip'
+   archiveFile: '$(Build.ArtifactStagingDirectory)/evm_llvm-llc.zip'
+- script: |
+    shasum -a 256 $(Build.ArtifactStagingDirectory)/evm_llvm-llc.zip > $(Build.ArtifactStagingDirectory)/evm_llvm-llc.zip.sha256
+  displayName: 'Finalize artifacts'
