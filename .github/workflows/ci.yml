@@ -20,7 +20,7 @@ jobs:
       run: |
         mkdir build && cd build
         cmake -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD=EVM -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=EVM ..
-        make -j$(nproc)
+        make -j$(nproc) llc
         cd ..
     - name: Archive
       run: |
