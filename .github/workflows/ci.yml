@@ -18,7 +18,7 @@ jobs:
         mkdir build && cd build
         cmake -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD=EVM -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=EVM ..
         make -j$(nproc)
-        cd -
+        cd ..
     - name: Archive
       run: |
         zip -j evm-llvm-llc-$GITHUB_SHA.zip build/bin/llc
