@@ -29,3 +29,4 @@ steps:
 - script: |
     shasum -a 256 $(Build.ArtifactStagingDirectory)/evm_llvm-llc.zip > $(Build.ArtifactStagingDirectory)/evm_llvm-llc.zip.sha256
   displayName: 'Finalize artifacts'
+- task: PublishBuildArtifacts@1
