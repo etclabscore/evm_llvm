@@ -25,8 +25,9 @@ steps:
    rootFolderOrFile: 'build/bin/llc'
    includeRootFolder: false
    archiveType: 'zip'
-   archiveFile: '$(Build.ArtifactStagingDirectory)/evm_llvm-llc.zip'
+   archiveFile: '$(Build.ArtifactStagingDirectory)/evm_llvm-llc-$(Build.SourceVersion).zip'
 - script: |
-    shasum -a 256 $(Build.ArtifactStagingDirectory)/evm_llvm-llc.zip > $(Build.ArtifactStagingDirectory)/evm_llvm-llc.zip.sha256
+    shasum -a 256 $(Build.ArtifactStagingDirectory)/evm_llvm-llc-$(Build.SourceVersion).zip \
+    > $(Build.ArtifactStagingDirectory)/evm_llvm-llc-$(Build.SourceVersion).zip.sha256
   displayName: 'Finalize artifacts'
 - task: PublishBuildArtifacts@1
