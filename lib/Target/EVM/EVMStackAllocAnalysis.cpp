@@ -548,7 +548,12 @@ MachineInstr& EVMStackAlloc::tryToAnalyzeStackArgs(MachineBasicBlock *MBB) {
       regAssignments.insert(
           std::pair<unsigned, StackAssignment>(reg, {NONSTACK, slot}));
 
+      unsigned depth = stack.findRegDepth(reg);
+      if (depth != 0) {
+        insertSwapBefore(depth, MI);
+      }
       insertStoreToMemoryBefore(reg, MI, slot);
+
       LLVM_DEBUG({
         dbgs() << "    Allocating %" << Register::virtReg2Index(reg)
                << " to memslot: " << slot << "\n";
