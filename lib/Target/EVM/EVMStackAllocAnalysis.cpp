@@ -165,32 +165,35 @@ void EdgeSets::computeEdgeSets(MachineFunction *MF) {
   // First, assign each edge with a number:
   collectEdges(MF);
 
-  // Insert a default edge set: NULL->Entry:
-
   // Then, assign a new edge set for each of the edges
   for (std::pair<unsigned, Edge> index : edgeIndex) {
     edgeIndex2EdgeSet.insert({index.first, index.first});
   }
 
+
   // Criteria: Two MBBs share a same edge set if:
   // 1. they have a common child.
   // 2. they have a common parent.  
   for (MachineBasicBlock &MBB : *MF) {
+    LLVM_DEBUG({
+      dbgs() << "    Processing MBB:" << MBB.getNumber() << "\n";
+    });
     // we have more than one predecessors
     if (std::distance(MBB.pred_begin(), MBB.pred_end()) > 1) {
       // all predecessors belong to an edge set
       MachineBasicBlock *first = *MBB.pred_begin();
-
       MachineBasicBlock::pred_iterator iter = ++MBB.pred_begin();
+
       while (iter != MBB.pred_end()) {
-        mergeEdgeSets({first, &MBB}, {*iter, &MBB});
+        mergeEdgeSets({first, &MBB}, {*iter++, &MBB});
       }
     }
+
     if (std::distance(MBB.succ_begin(), MBB.succ_end()) > 1) {
       // all sucessors belong to an edge set
       MachineBasicBlock *first = *MBB.succ_begin();
-
       MachineBasicBlock::pred_iterator iter = ++MBB.succ_begin();
+
       while (iter != MBB.succ_end()) {
         mergeEdgeSets({&MBB, first}, {&MBB, *iter++});
       }
