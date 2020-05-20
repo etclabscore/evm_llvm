@@ -295,6 +295,7 @@ private:
   void insertStoreToMemoryBefore(unsigned reg, MachineInstr &MI, unsigned memSlot);
   void insertDupBefore(unsigned index, MachineInstr &MI);
   void insertSwapBefore(unsigned index, MachineInstr &MI);
+  void insertSwapAfter(unsigned index, MachineInstr &MI);
   void insertPopAfter(MachineInstr &MI);
   void insertPopBefore(MachineInstr &MI);
 

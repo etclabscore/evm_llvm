@@ -628,13 +628,23 @@ void EVMStackAlloc::cleanUpDeadRegisters(MachineInstr &MI) {
 
   MachineBasicBlock::iterator insertPoint(MI);
   insertPoint++;
+  MachineBasicBlock *MBB = MI.getParent();
   for (MOPUseType mut : useTypes) {
     if (mut.second.isLastUse) {
       unsigned depth = stack.findRegDepth(mut.second.reg);
+
       if (depth != 0) {
-        insertSwapBefore(depth, *insertPoint);
+        if (insertPoint == MBB->end()) {
+          insertSwapAfter(depth, MI);
+        } else {
+          insertSwapBefore(depth, *insertPoint);
+        }
       }
-      insertPopBefore(*insertPoint);
+      if (insertPoint == MBB->end()) {
+        insertPopAfter(MI);
+      } else {
+        insertPopBefore(*insertPoint);
+      }
     }
   }
 } 
@@ -1002,6 +1012,8 @@ void EVMStackAlloc::insertStoreToMemoryBefore(unsigned reg, MachineInstr &MI,
 }
 
 void EVMStackAlloc::insertPopAfter(MachineInstr &MI) {
+  // TODO: this is buggy, we should only use it when the MI is the last
+  // instruction in the MBB.
   MachineBasicBlock *MBB = MI.getParent();
   MachineFunction &MF = *MBB->getParent();
   MachineInstrBuilder pop = BuildMI(MF, MI.getDebugLoc(), TII->get(EVM::POP_r));
@@ -1019,6 +1031,17 @@ void EVMStackAlloc::insertPopBefore(MachineInstr &MI) {
   stack.pop();
 }
 
+void EVMStackAlloc::insertSwapAfter(unsigned index, MachineInstr &MI) {
+  // TODO: this is buggy, we should only use it when the MI is the last
+  // instruction in the MBB.
+  MachineBasicBlock *MBB = MI.getParent();
+  MachineInstrBuilder swap =
+      BuildMI(*MBB->getParent(), MI.getDebugLoc(), TII->get(EVM::SWAP_r))
+          .addImm(index);
+  MBB->insertAfter(MachineBasicBlock::iterator(MI), swap);
+  LIS->InsertMachineInstrInMaps(*swap);
+  stack.swap(index);
+}
 
 void EVMStackAlloc::insertSwapBefore(unsigned index, MachineInstr &MI) {
   MachineBasicBlock *MBB = MI.getParent();
