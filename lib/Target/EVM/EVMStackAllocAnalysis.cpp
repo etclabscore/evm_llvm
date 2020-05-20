@@ -241,7 +241,6 @@ void EdgeSets::printEdge(Edge edge) const {
 
 void EdgeSets::dump() const {
   LLVM_DEBUG({
-    dbgs() << "  Computed edge set: (size of edgesets: " << 0 << ")\n";
     for (std::pair<unsigned, unsigned> it : edgeIndex2EdgeSet) {
       // edge set Index : edge index
       unsigned edgeId = it.first;
@@ -320,11 +319,20 @@ void EVMStackAlloc::beginOfBlockUpdates(MachineBasicBlock *MBB) {
   if (MBB->pred_empty()) {
     return;
   }
+  LLVM_DEBUG({
+    dbgs() << "  beginBlockUpdate for MBB" << MBB->getNumber() << ".\n";
+  });
+
   MachineBasicBlock* Pred = *MBB->pred_begin();
   EdgeSets::Edge edge = {Pred, MBB};
   unsigned setIndex = edgeSets.getEdgeSetIndex(edge);
 
-  assert(edgeset2assignment.find(setIndex) != edgeset2assignment.end());
+  
+  if (edgeset2assignment.find(setIndex) != edgeset2assignment.end()) {
+    // TODO
+  } else {
+
+  }
   ActiveStack xStack = edgeset2assignment[setIndex].first;
   MemorySlots memslots = edgeset2assignment[setIndex].second;
 
@@ -358,14 +366,12 @@ void EVMStackAlloc::beginOfBlockUpdates(MachineBasicBlock *MBB) {
   }
 
   // Now free up memory slots if its occupant is out of range
-  SlotIndex MBBBeginSlot = LIS->getMBBStartIdx(MBB);
-  for (size_t i = 0; i < memoryAssignment.size(); ++i) {
+  for (unsigned i = 0; i < memoryAssignment.size(); ++i) {
     unsigned reg = memoryAssignment[i];
     if (reg == 0) {
       continue;
     }
-    const LiveInterval &LI = LIS->getInterval(reg);
-    if (!LI.liveAt(MBBBeginSlot)) {
+    if (regIsDeadAtBeginningOfMBB(reg, MBB)) {
       LLVM_DEBUG({
         dbgs() << "    Memslot: free up %" << Register::virtReg2Index(reg)
                << "\n";
@@ -428,27 +434,28 @@ void EVMStackAlloc::endOfBlockUpdates(MachineBasicBlock *MBB) {
   for (MachineBasicBlock *NextMBB : MBB->successors()) {
     unsigned edgeSetIndex = edgeSets.getEdgeSetIndex({MBB, NextMBB});
 
-    /*
-    if (edgeset2assignment.find(edgeSetIndex) != edgeset2assignment.end()) {
-      // We've already have an x stack assignment previously. so now we will
-      // need to arrange them so they are the same
-      
-      ActiveStack &another = edgeset2assignment[edgeSetIndex].first;
-      MemorySlots memslots = edgeset2assignment[edgeSetIndex].second;
-      assert(another == xStack && "Two X Stack arrangements are different!");
-      assert(memslots == memoryAssignment && "Two memory arrangements are different!");
-      //consolidateXRegionForEdgeSet(edgetSetIndex);
-    }
-    */
-
-    // TODO: merge edgeset
     EdgeSetAssignment EA = {stack.getStackElements(), memoryAssignment};
-    edgeset2assignment.erase(edgeSetIndex);
-    edgeset2assignment[edgeSetIndex] = EA;
+    mergeEdgesetAssigments(edgeSetIndex, EA);
     break;
   }
 }
 
+
+void EVMStackAlloc::mergeEdgesetAssigments(unsigned edgeSetIndex, EdgeSetAssignment &EA) {
+  edgeset2assignment[edgeSetIndex] = EA;
+  /*
+  auto iter = edgeset2assignment.find(edgeSetIndex);
+  if (iter != edgeset2assignment.end()) {
+    // we have an existing edgeset assignment. merge EA with it.
+    EdgeSetAssignment &OldEA = iter->second;
+    MemorySlots newMem;
+    
+    //edgeset2assignment[edgeSetIndex] = NewEA;
+  } else {
+    edgeset2assignment[edgeSetIndex] = EA;
+  }
+  */
+}
 
 MachineInstr& EVMStackAlloc::tryToAnalyzeStackArgs(MachineBasicBlock *MBB) {
   if (MBB != &MBB->getParent()->front()) {
@@ -527,7 +534,7 @@ MachineInstr& EVMStackAlloc::tryToAnalyzeStackArgs(MachineBasicBlock *MBB) {
                         << " to LOCAL STACK.\n");
       // update stack status
       currentStackStatus.L.insert(reg);
-    } else if (liveIntervalWithinSameEdgeSet(reg)) {
+    } else if (false && liveIntervalWithinSameEdgeSet(reg)) {
       regAssignments.insert(
           std::pair<unsigned, StackAssignment>(reg, {X_STACK, 0}));
       LLVM_DEBUG(dbgs() << "    Allocating %"
@@ -558,6 +565,8 @@ MachineInstr& EVMStackAlloc::tryToAnalyzeStackArgs(MachineBasicBlock *MBB) {
         dbgs() << "    Allocating %" << Register::virtReg2Index(reg)
                << " to memslot: " << slot << "\n";
       });
+
+      // make sure we pop the right stack register.
       unsigned pop_stackreg = stack.pop();
       assert(reg == pop_stackreg);
     }
@@ -573,6 +582,10 @@ MachineInstr& EVMStackAlloc::tryToAnalyzeStackArgs(MachineBasicBlock *MBB) {
 
 void EVMStackAlloc::analyzeBasicBlock(MachineBasicBlock *MBB) {
   LLVM_DEBUG({ dbgs() << "  Analyzing MBB" << MBB->getNumber() << ":\n"; });
+
+  if (MBB->empty()) {
+    return;
+  }
 
   // this will alter MBB, so we record begin MI instruction
   stack.clear();
@@ -594,9 +607,7 @@ void EVMStackAlloc::analyzeBasicBlock(MachineBasicBlock *MBB) {
     // First consume, then create
     handleUses(MI);
     handleDef(MI);
-
     cleanUpDeadRegisters(MI);
-
     stack.dump();
   }
 
@@ -618,12 +629,14 @@ void EVMStackAlloc::cleanUpDeadRegisters(MachineInstr &MI) {
   MachineBasicBlock::iterator insertPoint(MI);
   insertPoint++;
   for (MOPUseType mut : useTypes) {
-    unsigned depth = stack.findRegDepth(mut.second.reg);
-    if (depth != 0) {
-      insertSwapBefore(depth, *insertPoint);
+    if (mut.second.isLastUse) {
+      unsigned depth = stack.findRegDepth(mut.second.reg);
+      if (depth != 0) {
+        insertSwapBefore(depth, *insertPoint);
+      }
+      insertPopBefore(*insertPoint);
     }
-    insertPopBefore(*insertPoint);
-    }
+  }
 } 
 
 StackAssignment EVMStackAlloc::getStackAssignment(unsigned reg) const {
@@ -705,15 +718,17 @@ bool EVMStackAlloc::regIsLastUse(const MachineOperand &MOP) const {
   const MachineInstr *MI = MOP.getParent();
   const MachineBasicBlock *MBB = MI->getParent();
   SlotIndex MISlot = LIS->getInstructionIndex(*MI).getRegSlot();
-  SlotIndex BBEndSlot = LIS->getMBBEndIdx(MBB);
+  SlotIndex BBEndSlot = LIS->getMBBEndIdx(&MBB->getParent()->back());
 
   if (rangeContainsRegUses(reg, MISlot, BBEndSlot)) {
     return false;
   }
 
+  /*
   if (sucessorsContainRegUses(reg, MBB)) {
     return false;
   }
+  */
 
   return true;
 }
@@ -760,7 +775,7 @@ void EVMStackAlloc::handleDef(MachineInstr &MI) {
 
     // If all uses are in a same edge set, send it to Transfer Stack
     // This could greatly benefit from a stack machine specific optimization.
-    if (liveIntervalWithinSameEdgeSet(defReg)) {
+    if (false && liveIntervalWithinSameEdgeSet(defReg)) {
       // it is a def register, so we only care about out-going edges.
       regAssignments.insert(
           std::pair<unsigned, StackAssignment>(defReg, {X_STACK, 0}));
@@ -829,6 +844,11 @@ bool EVMStackAlloc::liveIntervalWithinSameEdgeSet(unsigned defReg) {
 }
 
 unsigned EVMStackAlloc::calculateUseRegs(MachineInstr &MI, std::vector<MOPUseType> &useTypes) {
+  if (MI.getOpcode() == EVM::SAR_r) {
+      LLVM_DEBUG({
+        dbgs() << "found sar_r\n";
+      });
+  }
   unsigned index = 0;
   for (const MachineOperand &MOP : MI.explicit_uses()) {
     if (!MOP.isReg()) {
@@ -1130,6 +1150,7 @@ unsigned EVMStackAlloc::allocateXRegion(unsigned setIndex, unsigned reg) {
          "Inserting duplicate element in X region.");
 
   x_region.push_back(reg);
+  // TODO: we should arrange stack here.
   stack.pushElementToXRegion();
   return x_region.size();
 }
@@ -1201,7 +1222,6 @@ void EVMStackAlloc::getXStackRegion(unsigned edgeSetIndex,
   assert(edgeset2assignment.find(edgeSetIndex) != edgeset2assignment.end() &&
          "Cannot find edgeset index!");
   llvm_unreachable("not implemented");
-  //std::copy(edgeset2assignment.begin(), edgeset2assignment.end(), xRegion);
   return;
 }
 

@@ -234,6 +234,7 @@ private:
   bool rangeContainsRegUses(unsigned reg, SlotIndex &begin,
                             SlotIndex &end) const;
   bool sucessorsContainRegUses(unsigned reg, const MachineBasicBlock *MBB) const;
+  void mergeEdgesetAssigments(unsigned edgeSetIndex, EdgeSetAssignment &EA);
 
   // the pass to analyze a single basicblock
   MachineInstr &tryToAnalyzeStackArgs(MachineBasicBlock *MBB);
