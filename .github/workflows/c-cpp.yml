@@ -1,4 +1,4 @@
-name: C/C++ CI
+name: Compiler Backend CI
 
 on:
   push:
